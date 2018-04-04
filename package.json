@@ -1,0 +1,73 @@
+{
+  "name": "test_suite",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "tape test/**/*.js | tap-spec && standard | snazzy --verbose",
+    "test-a": "tape ./test/sanity_test.js| tap-spec && standard | snazzy --verbose",
+    "test-b": "tape ./test/second_test.js| tap-spec && standard | snazzy --verbose",
+    "test-c": "tape ./test/third_test.js| tap-spec && standard | snazzy --verbose",
+    "test:json": "tape ./index.js| tap-spec && standard | snazzy --verbose"
+  },
+  "author": "tj Loughry",
+  "license": "BSD-3-Clause",
+  "devDependencies": {
+    "snazzy": "^7.1.1",
+    "standard": "^11.0.1",
+    "standard-tap": "^1.0.2",
+    "tap-spec": "^4.1.1",
+    "tape": "^4.9.0"
+  },
+  "standard": {
+    "ignore": [
+      "_*",
+      "_**/*",
+      "test/lib/**/*",
+      "node_modules",
+      "dist/**/*",
+      "gulpfile.js",
+      "src/common/data/WIP/**/*",
+      "src/common/data/current/**/*"
+    ],
+    "globals": [
+      "NGN",
+      "NGNX",
+      "window",
+      "global",
+      "MutationObserver",
+      "EventEmitter",
+      "NgnCustomException",
+      "MissingNgnDependencyError",
+      "InvalidConfigurationError",
+      "ReservedWordError",
+      "DOMParser",
+      "XMLHttpRequest",
+      "FormData",
+      "btoa",
+      "localStorage",
+      "Network",
+      "Request",
+      "Response",
+      "Headers",
+      "fetch",
+      "Element",
+      "HTMLElement",
+      "NodeFilter",
+      "hostname",
+      "networkInterfaces",
+      "normalizeUrl",
+      "HttpMethods",
+      "request"
+    ]
+  },
+  "nyc": {
+    "exclude": [
+      "test/common"
+    ],
+    "include": [
+      "test/lib"
+    ]
+  },
+  "dependencies": {}
+}
