@@ -229,7 +229,7 @@ console.log(this.interval.start)
             )
 
             // Forcibly guarantee a month attribute exists.
-            if (duration.hasOwnProperty('months')) {
+            if (!duration.hasOwnProperty('months')) {
               duration.months = 0
             }
 
@@ -248,7 +248,7 @@ console.log(this.interval.start)
           HOUR: 3600000,
           DAY: 86400000,
           WEEK: 604800000,
-          YEAR: 31536000000,
+          YEAR: 3153600000,
 
           PATTERN: {
             /** TJ NOTES:
@@ -1601,7 +1601,7 @@ console.log(this.interval.start)
         quarter++
         // TJ NOTES: changed this.addMonth(start, 3) to this.addMonth(start, 4)
         // and quarters are now only showing Q1-Q4 rather than Q2-Q5
-        start = this.addMonth(start, 4)
+        start = this.addMonth(start, 3)
       }
 
       return quarter
