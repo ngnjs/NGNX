@@ -1142,95 +1142,95 @@ export default class DateTime extends NGN.EventEmitter {
   parseInterval (value, calculateIntervals = false) {
     return new this.Interval(value).JSON
 
-    if (!this.METADATA.PATTERN.ISO8601R.test(value)) {
-      return {
-        source: value,
-        valid: false,
-        years: 0,
-        months: 0,
-        weeks: 0,
-        days: 0,
-        hours: 0,
-        minutes: 0,
-        seconds: 0,
-        start: null,
-        end: null,
-        timezone: null,
-        intervalCount: 0
-      }
-    }
-
-    let match = this.METADATA.PATTERN.ISO8601R.exec(value)
-
-    // Populate base results
-    let result = {
-      source: value,
-      valid: true,
-      intervalCount: match[1] === undefined ? -1 : parseInt(match[1]),
-      start: new Date(`${match[2]}T${NGN.coalesce(match[3], '00:00:00Z')}`),
-      years: 0,
-      months: 0,
-      weeks: 0,
-      days: 0,
-      hours: 0,
-      minutes: 0,
-      seconds: 0,
-      timezone: NGN.coalesce(match[4])
-    }
-
-    let period
-    if (match[4]) {
-      period = this.parseDuration(match[5])
-    }
-
-    // Parse the period pattern
-    if (match[4]) {
-      result.period = period.source
-      result.years = period.years
-      result.months = period.months
-      result.weeks = period.weeks
-      result.days = period.days
-      result.hours = period.hours
-      result.minutes = period.minutes
-      result.seconds = period.seconds
-      result.valid = period.valid
-    }
-
-    // Generate the intervals
-    if (calculateIntervals && match[1] && match[5]) {
-      result.intervals = []
-
-      let currentDate = result.start
-
-      for (let i = 0; i < result.intervalCount; i++) {
-        currentDate = this.addDuration(currentDate, period)
-
-        result.intervals.push(toString(currentDate))
-      }
-
-      result.end = currentDate
-    } else if (match[1] !== null) {
-      // let futurePeriod = {
-      //   years: result.years * result.intervalCount,
-      //   months: result.months * result.intervalCount,
-      //   weeks: result.weeks * result.intervalCount,
-      //   days: result.days * result.intervalCount,
-      //   hours: result.hours * result.intervalCount,
-      //   minutes: result.minutes * result.intervalCount,
-      //   seconds: result.seconds * result.intervalCount,
-      //   valid: true
-      // }
-
-      result.end = new Date(result.start.getTime())
-
-      for (let i = 0; i < result.intervalCount; i++) {
-        result.end = new Date(this.addDuration(result.end, period).getTime())
-      }
-    } else {
-      result.end = null
-    }
-
-    return result
+    // if (!this.METADATA.PATTERN.ISO8601R.test(value)) {
+    //   return {
+    //     source: value,
+    //     valid: false,
+    //     years: 0,
+    //     months: 0,
+    //     weeks: 0,
+    //     days: 0,
+    //     hours: 0,
+    //     minutes: 0,
+    //     seconds: 0,
+    //     start: null,
+    //     end: null,
+    //     timezone: null,
+    //     intervalCount: 0
+    //   }
+    // }
+    //
+    // let match = this.METADATA.PATTERN.ISO8601R.exec(value)
+    //
+    // // Populate base results
+    // let result = {
+    //   source: value,
+    //   valid: true,
+    //   intervalCount: match[1] === undefined ? -1 : parseInt(match[1]),
+    //   start: new Date(`${match[2]}T${NGN.coalesce(match[3], '00:00:00Z')}`),
+    //   years: 0,
+    //   months: 0,
+    //   weeks: 0,
+    //   days: 0,
+    //   hours: 0,
+    //   minutes: 0,
+    //   seconds: 0,
+    //   timezone: NGN.coalesce(match[4])
+    // }
+    //
+    // let period
+    // if (match[4]) {
+    //   period = this.parseDuration(match[5])
+    // }
+    //
+    // // Parse the period pattern
+    // if (match[4]) {
+    //   result.period = period.source
+    //   result.years = period.years
+    //   result.months = period.months
+    //   result.weeks = period.weeks
+    //   result.days = period.days
+    //   result.hours = period.hours
+    //   result.minutes = period.minutes
+    //   result.seconds = period.seconds
+    //   result.valid = period.valid
+    // }
+    //
+    // // Generate the intervals
+    // if (calculateIntervals && match[1] && match[5]) {
+    //   result.intervals = []
+    //
+    //   let currentDate = result.start
+    //
+    //   for (let i = 0; i < result.intervalCount; i++) {
+    //     currentDate = this.addDuration(currentDate, period)
+    //
+    //     result.intervals.push(toString(currentDate))
+    //   }
+    //
+    //   result.end = currentDate
+    // } else if (match[1] !== null) {
+    //   // let futurePeriod = {
+    //   //   years: result.years * result.intervalCount,
+    //   //   months: result.months * result.intervalCount,
+    //   //   weeks: result.weeks * result.intervalCount,
+    //   //   days: result.days * result.intervalCount,
+    //   //   hours: result.hours * result.intervalCount,
+    //   //   minutes: result.minutes * result.intervalCount,
+    //   //   seconds: result.seconds * result.intervalCount,
+    //   //   valid: true
+    //   // }
+    //
+    //   result.end = new Date(result.start.getTime())
+    //
+    //   for (let i = 0; i < result.intervalCount; i++) {
+    //     result.end = new Date(this.addDuration(result.end, period).getTime())
+    //   }
+    // } else {
+    //   result.end = null
+    // }
+    //
+    // return result
   }
 
   /**

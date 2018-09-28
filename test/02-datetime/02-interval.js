@@ -8,7 +8,34 @@ const test = require('tap').test
 // repeat 3 times starting on 03/01/2018 at 3pm UTC and find P1Y2M3DT5H30M1S 3 times
 // no number after 'R' means repeat with out stop
 
-test('Basic Interval (Non-repeating)', (t) => {
+test('Duration (<duration>)', t => {
+  var TestInterval = 'P1Y2M10DT2H30M'
+  var Interval = new NGNX.DATE.Interval(TestInterval)
+  var data = Interval.JSON
+
+  t.ok(!data.valid, 'Duration alone is considered an invalid interval.')
+  t.ok(Interval.toString() === TestInterval, 'Basic interval input source is the same as the output.')
+  t.ok(!data.repeating, 'Basic interval is not classified as repeating.')
+  t.ok(data.intervalCount === 0, 'Basic interval repetition count is zero.')
+  t.ok(Interval.order === 'DESC', 'Recognized default descending order pattern.')
+  t.ok(
+    data.years === 1 &&
+    data.months === 2 &&
+    data.weeks === 0 &&
+    data.days === 10 &&
+    data.hours === 2 &&
+    data.minutes === 30 &&
+    data.seconds === 0 &&
+    data.timezone === 'Z' &&
+    data.duration === TestInterval.split('/').shift() &&
+    data.end === null &&
+    data.start === null, 'Duration elements are extracted correctly.'
+  )
+
+  t.end()
+})
+
+test('Start and End (<start/<end>)', (t) => {
   let TestInterval = '2007-03-01T13:00:00Z/2008-05-11T15:30:00Z'
   let Interval = new NGNX.DATE.Interval(TestInterval)
   let data = Interval.JSON
@@ -17,6 +44,78 @@ test('Basic Interval (Non-repeating)', (t) => {
   t.ok(Interval.toString() === TestInterval, 'Basic interval input source is the same as the output.')
   t.ok(!data.repeating, 'Basic interval is not classified as repeating.')
   t.ok(data.intervalCount === 0, 'Basic interval repetition count is zero.')
+
+  t.end()
+})
+
+test('Start and Duration (<start>/<duration>)', t => {
+  var TestInterval = '2007-03-01T13:00:00Z/P1Y2M10DT2H30M'
+  var Interval = new NGNX.DATE.Interval(TestInterval)
+  var data = Interval.JSON
+
+  t.ok(data.valid, 'Date and duration are considered a valid interval.')
+  t.ok(Interval.toString() === TestInterval, 'Basic interval input source is the same as the output.')
+  t.ok(!data.repeating, 'Basic interval is not classified as repeating.')
+  t.ok(data.intervalCount === 0, 'Basic interval repetition count is zero.')
+  t.ok(Interval.order === 'ASC', 'Recognized ascending pattern.')
+  t.ok(
+    data.years === 1 &&
+    data.months === 2 &&
+    data.weeks === 0 &&
+    data.days === 10 &&
+    data.hours === 2 &&
+    data.minutes === 30 &&
+    data.seconds === 0 &&
+    data.timezone === 'Z' &&
+    data.duration === TestInterval.split('/').pop() &&
+    data.start.getTime() === new Date(TestInterval.split('/').shift()).getTime() &&
+    data.end === null, 'Duration elements are extracted correctly.'
+  )
+
+  t.end()
+})
+
+test('Duration and End (<duration>/<end>)', t => {
+  var TestInterval = 'P1Y2M10DT2H30M/2008-05-11T15:30:00Z'
+  var Interval = new NGNX.DATE.Interval(TestInterval)
+  var data = Interval.JSON
+
+  t.ok(data.valid, 'Date and duration are considered a valid interval.')
+  t.ok(Interval.toString() === TestInterval, 'Basic interval input source is the same as the output.')
+  t.ok(!data.repeating, 'Basic interval is not classified as repeating.')
+  t.ok(data.intervalCount === 0, 'Basic interval repetition count is zero.')
+  t.ok(Interval.order === 'DESC', 'Recognized descending pattern.')
+  t.ok(
+    data.years === 1 &&
+    data.months === 2 &&
+    data.weeks === 0 &&
+    data.days === 10 &&
+    data.hours === 2 &&
+    data.minutes === 30 &&
+    data.seconds === 0 &&
+    data.timezone === 'Z' &&
+    data.duration === TestInterval.split('/').shift() &&
+    data.end.getTime() === new Date(TestInterval.split('/').pop()).getTime() &&
+    data.start === null, 'Duration elements are extracted correctly.'
+  )
+
+  t.end()
+})
+
+// TODO: Add more abbreviation tests
+test('Abbreviated Interval Formatting', t => {
+  var TestInterval = '2007-12-14T13:30/15:30'
+  var Interval = new NGNX.DATE.Interval(TestInterval)
+  var data = Interval.JSON
+
+  t.ok(
+    data.end.getFullYear() === 2007 &&
+    data.end.getUTCMonth() === 11 &&
+    data.end.getUTCDate() === 14 &&
+    data.end.getUTCHours() === 15 &&
+    data.end.getUTCMinutes() === 30
+    , 'Duration elements are extracted correctly.'
+  )
 
   t.end()
 })
@@ -51,20 +150,21 @@ test('Parse Repeating Interval (Defined Repetitions)', (t) => {
   let result = NGNX.DATE.parseInterval(value, false)
 
   t.ok(
-    // result.source === expected.source &&
-    // result.period === expected.period &&
-    // result.valid === expected.valid &&
-    // result.years === expected.years &&
-    // result.months === expected.months &&
-    // result.weeks === expected.weeks &&
-    // result.days === expected.days &&
-    // result.hours === expected.hours &&
-    // result.minutes === expected.minutes &&
-    // result.seconds === expected.seconds &&
-    // result.start.getTime() === expected.start.getTime() &&
-    result.lastPeriod.getTime() === expected.lastPeriod.getTime() &&
+    result.repeating === true &&
+    result.source === expected.source &&
+    result.duration === expected.period &&
+    result.valid === expected.valid &&
+    result.years === expected.years &&
+    result.months === expected.months &&
+    result.weeks === expected.weeks &&
+    result.days === expected.days &&
+    result.hours === expected.hours &&
+    result.minutes === expected.minutes &&
+    result.seconds === expected.seconds &&
+    result.start.getTime() === expected.start.getTime() &&
+    // result.lastPeriod.getTime() === expected.lastPeriod.getTime() &&
     result.intervalCount === expected.intervalCount,
-    'Date is returning PARSE INTERVAL SOURCE correctly'
+    'Parse a repeating interval with a bounded end.'
   )
 
   // TODO: check for syntax
@@ -113,7 +213,7 @@ test('Parse Repeating Interval (Infinite Repetitions)', (t) => {
     result.start.getTime() === expected.start.getTime() &&
     result.end === null &&
     result.intervalCount === expected.intervalCount,
-    'Date is returning PARSE INTERVAL SOURCE correctly'
+    'Parse an infinitely repeating interval.'
   )
 
   // TODO: check for syntax
@@ -162,10 +262,10 @@ test('Create Repeating Interval String', (t) => {
   let seconds3 = 15
   let expectedDate3 = 'R10/2018-02-15T20:15:30.000Z/P10Y10M7DT12H45M15S'
 
-  t.ok(NGNX.DATE.createRepeatingIntervalString(startDate0, interval0, year0, months0, weeks0, days0, hours0, minutes0, seconds0) === expectedDate0, 'Date is returning REPEATING INTERVAL STRING correctly')
-  t.ok(NGNX.DATE.createRepeatingIntervalString(startDate1, interval1, year1, months1, weeks1, days1, hours1, minutes1, seconds1) === expectedDate1, 'Date is returning REPEATING INTERVAL STRING correctly')
-  t.ok(NGNX.DATE.createRepeatingIntervalString(startDate2, interval2, year2, months2, weeks2, days2, hours2, minutes2, seconds2) === expectedDate2, 'Date is returning REPEATING INTERVAL STRING correctly')
-  t.ok(NGNX.DATE.createRepeatingIntervalString(startDate3, interval3, year3, months3, weeks3, days3, hours3, minutes3, seconds3) === expectedDate3, 'Date is returning REPEATING INTERVAL STRING correctly')
+  t.ok(NGNX.DATE.createRepeatingIntervalString(startDate0, interval0, year0, months0, weeks0, days0, hours0, minutes0, seconds0) === expectedDate0, 'Defined interval respected.')
+  t.ok(NGNX.DATE.createRepeatingIntervalString(startDate1, interval1, year1, months1, weeks1, days1, hours1, minutes1, seconds1) === expectedDate1, 'Zero value interval recognized as ifinite.')
+  t.ok(NGNX.DATE.createRepeatingIntervalString(startDate2, interval2, year2, months2, weeks2, days2, hours2, minutes2, seconds2) === expectedDate2, 'Recognizes repeating week format.')
+  t.ok(NGNX.DATE.createRepeatingIntervalString(startDate3, interval3, year3, months3, weeks3, days3, hours3, minutes3, seconds3) === expectedDate3, 'Standard repeating interval understood.')
 
   t.end()
 })

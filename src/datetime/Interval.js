@@ -44,9 +44,8 @@ export default class DateInterval {
     interval.split('/').forEach((element, i) => {
       // Identify repeating interval
       if (i === 0 && /^R[0-9]?/i.test(element)) {
-        this.intervalCount = parseInt(NGN.coalesceb(element.replace(/^\R/i, ''), '-1'), 10)
+        this.intervalCount = parseInt(NGN.coalesceb(element.replace(/^R/i, ''), '-1'), 10)
       } else {
-
         // Identify duration, start/end dates
         if (this.PRIVATE.PERIOD.test(element)) {
           this.METADATA.duration = new Duration(element)
@@ -54,21 +53,81 @@ export default class DateInterval {
           if (this.METADATA.duration === null && this.METADATA.start === null) {
             this.METADATA.start = new Date(element)
           } else {
-            this.METADATA.end = new Date(element)
+            // Per ISO 8601:2004, any elements not identified in the end date should use the start date values.
+            try {
+              this.METADATA.end = Date.parse(element)
+
+              if (isNaN(this.METADATA.end) === false) {
+                this.METADATA.end = new Date(element)
+              } else {
+                throw new Error('Invalid Date Format')
+              }
+
+              if (element.indexOf('T') < 0 && this.METADATA.start !== null) {
+                this.METADATA.end.setUTCHours(this.METADATA.start.getUTCHours())
+                this.METADATA.end.setUTCMinutes(this.METADATA.start.getUTCMinutes())
+                this.METADATA.end.getUTCSeconds(this.METADATA.start.getUTCSeconds())
+              }
+            } catch (e) {
+              if (this.METADATA.start === null) {
+                throw new Error('Could not set end date (missing value or invalid format).')
+              }
+
+              let date = new Date(this.METADATA.start.getTime())
+              let datepart = null
+              let timepart = null
+
+              if (element.indexOf('T') >= 0) {
+                datepart = element.split('T')[0]
+                timepart = element.splt('T').pop()
+              } else if (element.indexOf('-') >= 0) {
+                datepart = element
+              } else {
+                timepart = element
+              }
+
+              if (datepart !== null) {
+                datepart.split('-').forEach((part, i) => {
+                  if (part.length >= 4) {
+                    date.setFullYear(parseInt(part, 10))
+                  } else if (i < datepart.length) {
+                    date.setUTCMonth(parseInt(part, 10))
+                  } else {
+                    date.setUTCDate(part)
+                  }
+                })
+              }
+
+              if (timepart !== null) {
+                timepart.split(':').forEach((part, i) => {
+                  switch (i) {
+                    case 0:
+                      date.setUTCHours(parseInt(part, 10))
+                      break
+
+                    case 1:
+                      date.setUTCMinutes(parseInt(part, 10))
+                      break
+
+                    case 2:
+                      date.setUTCSeconds(parseInt(part, 10))
+                      break
+                  }
+                })
+              }
+
+              this.METADATA.end = new Date(date.getTime())
+            }
           }
         }
       }
     })
 
     if (this.METADATA.start !== null || this.METADATA.end !== null) {
-console.log(NGN.coalesce(this.METADATA.start, this.METADATA.end));
       let date = this.PRIVATE.DATE.exec(NGN.coalesce(this.METADATA.start, this.METADATA.end).toISOString())
 
       this.METADATA.timezone = date[3]
     }
-
-    console.log(this.JSON)
-    console.log(this.toString())
   }
 
   get source () {
@@ -207,7 +266,7 @@ console.log(NGN.coalesce(this.METADATA.start, this.METADATA.end));
   }
 
   get timezone () {
-    return this.METADATA.timezone
+    return NGN.coalesce(this.METADATA.timezone, 'Z')
   }
 
   set timezone (value) {
@@ -247,7 +306,7 @@ console.log(NGN.coalesce(this.METADATA.start, this.METADATA.end));
       hours: this.hours,
       minutes: this.minutes,
       seconds: this.seconds,
-      timezone: this.METADATA.timezone,
+      timezone: this.timezone,
       duration: this.duration,
       start: this.METADATA.start,
       end: this.METADATA.end,
@@ -255,10 +314,6 @@ console.log(NGN.coalesce(this.METADATA.start, this.METADATA.end));
       intervalCount: this.METADATA.intervalCount,
       valid: this.valid
     }
-  }
-
-  get lastPeriod () {
-    return 'COMPLETE ME'
   }
 
   toString () {
