@@ -67,8 +67,10 @@ export default class DateTime extends NGN.EventEmitter {
           return names
         },
 
-        changeDuration: (date, period, add = true) => {
+        changeDuration: (date, period, multiplier = 1, add = true) => {
           let duration = period
+
+          multiplier = multiplier > 0 ? Math.floor(multiplier) : Math.ceiling(multiplier)
 
           if (typeof period === 'string') {
             duration = this.parseDuration(period)
@@ -78,15 +80,22 @@ export default class DateTime extends NGN.EventEmitter {
             }
           }
 
+          if (duration instanceof Duration) {
+            if (!duration.valid) {
+              throw new Error(`${duration.toString()} is an invalid duration.`)
+            }
+
+            duration = duration.JSON
+          }
+
           let interval = (
             // Do not include years by millisecond to account for leap years.
-            // (duration.years * this.METADATA.YEAR) +
             (duration.weeks * this.METADATA.WEEK) +
             (duration.days * this.METADATA.DAY) +
             (duration.hours * this.METADATA.HOUR) +
             (duration.minutes * this.METADATA.MINUTE) +
             (duration.seconds * this.METADATA.SECOND)
-          )
+          ) * multiplier
 
           // Forcibly guarantee a month attribute exists.
           if (!duration.hasOwnProperty('months')) {
@@ -94,10 +103,20 @@ export default class DateTime extends NGN.EventEmitter {
           }
 
           let newdate
+
           if (add) {
-            newdate = this.addMonth(this.addMillisecond(this.addYear(date, duration.years || 0), interval), duration.months)
+            newdate = this.addMonth(this.addMillisecond(this.addYear(date, (duration.years || 0) * multiplier), interval), duration.months * multiplier)
           } else {
-            newdate = this.addMonth(this.addMillisecond(this.addYear(date, 0 - (duration.years || 0)), 0 - interval), 0 - duration.months)
+            newdate = this.addMonth(this.addMillisecond(this.addYear(date, 0 - ((duration.years || 0) * multiplier)), 0 - interval), 0 - (duration.months * multiplier))
+          }
+
+          // Support leap year when days are part of the duration.
+          if (duration.days > 0) {
+            let leapYears = this.getLeapYears(date, newdate)
+
+            if (leapYears.length > 0) {
+              newdate = this.addDay(newdate, leapYears.length)
+            }
           }
 
           return newdate
@@ -355,9 +374,9 @@ export default class DateTime extends NGN.EventEmitter {
    * to a date.
    * @param {Date} date
    * The date to apply the interval to.
-   * @param {string|object} duration
-   * This can be the ISO-8601:2004 period pattern (PnYnMnDTnHnMnS or PnW) or
-   * an object containing the following attributes:
+   * @param {string|object|NGNX.DATE.Duration} duration
+   * This can be the ISO-8601:2004 period pattern (PnYnMnDTnHnMnS or PnW), an
+   * NGNX.DATE.Duration intance, or an object containing the following attributes:
    *
    * ```
    * {
@@ -373,11 +392,16 @@ export default class DateTime extends NGN.EventEmitter {
    *
    * Using an object is *more efficient* since the duration parser does not
    * need to be invoked.
+   * @param {Number} [multiplier=1]
+   * A whole number specifiying how many times the duration should be added.
+   * By default this is `1` (add one duration). The multiplier is most useful
+   * when a specific interval value neds to be obtained, such as the 7th period
+   * in an interval (7 durations).
    * @return {Date}
    * Returns the new date after the duration has been applied (added).
    */
-  addDuration (date, period) {
-    return this.METADATA.changeDuration(date, period)
+  addDuration (date, period, multiplier = 1) {
+    return this.METADATA.changeDuration(date, period, multiplier)
   }
 
   /**
@@ -385,9 +409,9 @@ export default class DateTime extends NGN.EventEmitter {
    * from a date.
    * @param {Date} date
    * The date to apply the interval to.
-   * @param {string|object} duration
-   * This can be the ISO-8601:2004 period pattern (PnYnMnDTnHnMnS or PnW) or
-   * an object containing the following attributes:
+   * @param {string|object|NGNX.DATE.Duration} duration
+   * This can be the ISO-8601:2004 period pattern (PnYnMnDTnHnMnS or PnW), an
+   * NGNX.DATE.Duration intance, or an object containing the following attributes:
    *
    * ```
    * {
@@ -403,11 +427,16 @@ export default class DateTime extends NGN.EventEmitter {
    *
    * Using an object is *more efficient* since the duration parser does not
    * need to be invoked.
+   * @param {Number} [multiplier=1]
+   * A whole number specifiying how many times the duration should be subtracted.
+   * By default this is `1` (subtract one duration). The multiplier is most useful
+   * when a specific interval value neds to be obtained, such as the 7th period
+   * in an interval (7 durations from start).
    * @return {Date}
    * Returns the new date after the duration has been applied (subtracted).
    */
-  subtractDuration (date, period) {
-    return this.METADATA.changeDuration(date, period, false)
+  subtractDuration (date, period, multiplier = 1) {
+    return this.METADATA.changeDuration(date, period, multiplier, false)
   }
 
   /**
@@ -994,12 +1023,75 @@ export default class DateTime extends NGN.EventEmitter {
 
   /**
    * Determines whether the date falls within a leap year.
-   * @param  {Date} date
+   * @param  {Date|Number} date
+   * This is the date to check for a leap year or a year number to determine if
+   * it's a leap year
    */
   isLeapYear (date) {
-    let year = date.getUTCFullYear()
+    let year = date instanceof Date ? date.getUTCFullYear() : date
 
     return ((year % 4 === 0) && (year % 100 !== 0)) || (year % 400 === 0)
+  }
+
+  /**
+   * Retrieve the known leap years between two dates/years.
+   * @param  {Date|Number} begin
+   * The start date or year.
+   * @param  {Date|Number} end
+   * The end date or year.
+   * @param {Boolean} [ignoreDays=false]
+   * Includes leap year values even if the start date
+   * has not yet reached Feb 29 or the end date is before Feb 28.
+   * @return {Array}
+   * Returns an array of the leap years found between the beginning and end.
+   * The beginning and end years are included in the search. However; dates are
+   * more specific. If the start date is on or after March 1, the year is ignored
+   * (since the leap year additional day, Feb 29, has already occurred). If the end date
+   * is on or before Feb 28, the leap year additional daya has ot already occurred.
+   * This functionality can be ignored by setting the `ignoreDays` argument to `true`.
+   */
+  getLeapYears (begin, end) {
+    let leapYears = []
+
+    // Short circuit simple calculation
+    if (typeof begin === 'number' && typeof end === 'number') {
+      for (let yr = begin; yr <= end; yr++) {
+        if (this.isLeapYear(yr)) {
+          leapYears.push(yr)
+        }
+      }
+
+      return leapYears
+    }
+
+    // Handle specific date sequences
+    begin = typeof begin === 'number' ? new Date(`${begin}-01-01T00:00:000.Z`) : begin
+    end = typeof end === 'number' ? new Date(`${end}-01-01T00:00:000.Z`) : end
+
+    // Force correct order
+    if (begin > end) {
+      NGN.INFO(`#getLeapYears() returned 0 because the start date (${begin.toISOString()}) is after the end date (${end.toISOString()}) `)
+      return 0
+    }
+
+    let start = begin.getFullYear()
+    let finish = end.getFullYear()
+
+    if (begin.getTime() >= (new Date(`${begin.getFullYear()}-03-01T00:00:00Z`)).getTime()) {
+      start++
+    }
+
+    if (end.getTime() <= (new Date(`${end.getFullYear()}-02-28T23:59:59Z`)).getTime()) {
+      finish--
+    }
+
+    for (let yr = start; yr <= finish; yr++) {
+      if (this.isLeapYear(yr)) {
+        leapYears.push(yr)
+      }
+    }
+
+    return leapYears
   }
 
   /**
@@ -1116,6 +1208,8 @@ export default class DateTime extends NGN.EventEmitter {
    *   2014-02-22T01:30:00Z, // Occurrence 5 (Last Occurrence)
    * ]
    * ```
+   * @param {number} [maxRepetitionCount=25]
+   * The maximum number of records to retrieve when calculating an interval time table with no end (infinite).
    * @return {object}
    * Returns an object like:
    * ```
@@ -1132,6 +1226,7 @@ export default class DateTime extends NGN.EventEmitter {
    *   seconds: 0,
    *   start: Date, // 2008-03-01
    *   end: Date, // 2014-02-23T01:30:00Z
+   *   order: 'ASC', // ASC or DESC based on whether the interval goes forwards or backwards in time.
    *   intervalCount: 5, // This will be -1 if the interval is indefinite (forever).
    *   intervals: [ // OPTIONAL (only if calculateIntervals is true)
    *     ...
@@ -1139,98 +1234,15 @@ export default class DateTime extends NGN.EventEmitter {
    * }
    * ```
    */
-  parseInterval (value, calculateIntervals = false) {
-    return new this.Interval(value).JSON
+  parseInterval (value, calculateIntervals = false, maxRepetitionCount = 25) {
+    let interval = new this.Interval(value)
+    let data = interval.JSON
 
-    // if (!this.METADATA.PATTERN.ISO8601R.test(value)) {
-    //   return {
-    //     source: value,
-    //     valid: false,
-    //     years: 0,
-    //     months: 0,
-    //     weeks: 0,
-    //     days: 0,
-    //     hours: 0,
-    //     minutes: 0,
-    //     seconds: 0,
-    //     start: null,
-    //     end: null,
-    //     timezone: null,
-    //     intervalCount: 0
-    //   }
-    // }
-    //
-    // let match = this.METADATA.PATTERN.ISO8601R.exec(value)
-    //
-    // // Populate base results
-    // let result = {
-    //   source: value,
-    //   valid: true,
-    //   intervalCount: match[1] === undefined ? -1 : parseInt(match[1]),
-    //   start: new Date(`${match[2]}T${NGN.coalesce(match[3], '00:00:00Z')}`),
-    //   years: 0,
-    //   months: 0,
-    //   weeks: 0,
-    //   days: 0,
-    //   hours: 0,
-    //   minutes: 0,
-    //   seconds: 0,
-    //   timezone: NGN.coalesce(match[4])
-    // }
-    //
-    // let period
-    // if (match[4]) {
-    //   period = this.parseDuration(match[5])
-    // }
-    //
-    // // Parse the period pattern
-    // if (match[4]) {
-    //   result.period = period.source
-    //   result.years = period.years
-    //   result.months = period.months
-    //   result.weeks = period.weeks
-    //   result.days = period.days
-    //   result.hours = period.hours
-    //   result.minutes = period.minutes
-    //   result.seconds = period.seconds
-    //   result.valid = period.valid
-    // }
-    //
-    // // Generate the intervals
-    // if (calculateIntervals && match[1] && match[5]) {
-    //   result.intervals = []
-    //
-    //   let currentDate = result.start
-    //
-    //   for (let i = 0; i < result.intervalCount; i++) {
-    //     currentDate = this.addDuration(currentDate, period)
-    //
-    //     result.intervals.push(toString(currentDate))
-    //   }
-    //
-    //   result.end = currentDate
-    // } else if (match[1] !== null) {
-    //   // let futurePeriod = {
-    //   //   years: result.years * result.intervalCount,
-    //   //   months: result.months * result.intervalCount,
-    //   //   weeks: result.weeks * result.intervalCount,
-    //   //   days: result.days * result.intervalCount,
-    //   //   hours: result.hours * result.intervalCount,
-    //   //   minutes: result.minutes * result.intervalCount,
-    //   //   seconds: result.seconds * result.intervalCount,
-    //   //   valid: true
-    //   // }
-    //
-    //   result.end = new Date(result.start.getTime())
-    //
-    //   for (let i = 0; i < result.intervalCount; i++) {
-    //     result.end = new Date(this.addDuration(result.end, period).getTime())
-    //   }
-    // } else {
-    //   result.end = null
-    // }
-    //
-    // return result
+    if (calculateIntervals) {
+      data.intervals = interval.toTimeTable(maxRepetitionCount)
+    }
+
+    return data
   }
 
   /**

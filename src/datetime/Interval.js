@@ -27,7 +27,7 @@ export default class DateInterval {
         start: null,
         end: null,
         timezone: null,
-        intervalCount: 0,
+        repetitionCount: 0,
         duration: null
       }),
 
@@ -44,7 +44,7 @@ export default class DateInterval {
     interval.split('/').forEach((element, i) => {
       // Identify repeating interval
       if (i === 0 && /^R[0-9]?/i.test(element)) {
-        this.intervalCount = parseInt(NGN.coalesceb(element.replace(/^R/i, ''), '-1'), 10)
+        this.repetitionCount = parseInt(NGN.coalesceb(element.replace(/^R/i, ''), '-1'), 10)
       } else {
         // Identify duration, start/end dates
         if (this.PRIVATE.PERIOD.test(element)) {
@@ -158,7 +158,7 @@ export default class DateInterval {
   }
 
   get repeating () {
-    return this.METADATA.intervalCount === Infinity || this.METADATA.intervalCount !== 0
+    return this.METADATA.repetitionCount === Infinity || this.METADATA.repetitionCount !== 0
   }
 
   get duration () {
@@ -273,12 +273,12 @@ export default class DateInterval {
     this.METADATA.timezone = value
   }
 
-  get intervalCount () {
-    return this.METADATA.intervalCount
+  get repetitionCount () {
+    return this.METADATA.repetitionCount
   }
 
-  set intervalCount (value) {
-    this.METADATA.intervalCount = value
+  set repetitionCount (value) {
+    this.METADATA.repetitionCount = value
   }
 
   /**
@@ -311,9 +311,53 @@ export default class DateInterval {
       start: this.METADATA.start,
       end: this.METADATA.end,
       repeating: this.repeating,
-      intervalCount: this.METADATA.intervalCount,
+      repetitionCount: this.METADATA.repetitionCount,
       valid: this.valid
     }
+  }
+
+  /**
+   * The last date of the interval.
+   * @return {Date|null}
+   * This will always be `null` for unbounded
+   * repeating intervals (i.e. no end).
+   */
+  get lastDate () {
+    if (this.repeating) {
+      if (this.repetitionCount === Infinity || this.repetitionCount < 0) {
+        // Unbounded
+        return null
+      }
+
+      return NGNX.DATE.METADATA.changeDuration(NGN.coalesce(this.METADATA.end, this.METADATA.start), this.duration, this.repetitionCount, this.order === 'ASC')
+    }
+
+    return this.METADATA.end
+  }
+
+  /**
+   * @param {number} [maxRepetitionCount=25]
+   * The maximum number of records to retrieve when calculating an interval time table with no end (infinite).
+   * @return {Array}
+   * Returns and array of dates.
+   */
+  toTimeTable (maxRepetitionCount = 25) {
+    if (!this.repeating) {
+      return []
+    }
+
+    let results = []
+    let currentDate = NGN.coalesce(this.start, this.end)
+    let max = NGN.coalesce(NGN.nullIf(this.repetitionCount, -1), maxRepetitionCount)
+    let order = this.order
+    let period = this.duration.toString()
+
+    for (let i = 0; i < max; i++) {
+      currentDate = NGNX.DATE.METADATA.changeDuration(currentDate, period, 1, order === 'ASC')
+      results.push(currentDate)
+    }
+
+    return results
   }
 
   toString () {
@@ -322,8 +366,8 @@ export default class DateInterval {
     // Identify repeating interval
     if (this.repeating) {
       str[0] = 'R'
-      if (this.METADATA.intervalCount !== Infinity && typeof this.METADATA.intervalCount === 'number' && this.METADATA.intervalCount > 0) {
-        str[0] += this.METADATA.intervalCount
+      if (this.METADATA.repetitionCount !== Infinity && typeof this.METADATA.repetitionCount === 'number' && this.METADATA.repetitionCount > 0) {
+        str[0] += this.METADATA.repetitionCount
       }
     }
 
