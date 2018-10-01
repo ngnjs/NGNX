@@ -241,7 +241,7 @@ export default class DateTime extends NGN.EventEmitter {
    * The number of milliseconds to add to the date.
    * @return {Date}
    */
-  addMillisecond (date, milliseconds) {
+  addMillisecond (date, milliseconds = 1) {
     return new Date(date.getTime() + milliseconds)
   }
 
@@ -252,7 +252,7 @@ export default class DateTime extends NGN.EventEmitter {
    * The number of seconds to add to the date.
    * @return {Date}
    */
-  addSecond (date, seconds) {
+  addSecond (date, seconds = 1) {
     return new Date(date.getTime() + (seconds * this.METADATA.SECOND))
   }
 
@@ -263,7 +263,7 @@ export default class DateTime extends NGN.EventEmitter {
    * The number of minutes to add to the date.
    * @return {Date}
    */
-  addMinute (date, minutes) {
+  addMinute (date, minutes = 1) {
     return new Date(date.getTime() + (minutes * this.METADATA.MINUTE))
   }
 
@@ -274,7 +274,7 @@ export default class DateTime extends NGN.EventEmitter {
    * The number of hours to add to the date.
    * @return {Date}
    */
-  addHour (date, hours) {
+  addHour (date, hours = 1) {
     return new Date(date.getTime() + (hours * this.METADATA.HOUR))
   }
 
@@ -285,7 +285,7 @@ export default class DateTime extends NGN.EventEmitter {
    * The number of days to add to the date.
    * @return {Date}
    */
-  addDay (date, days) {
+  addDay (date, days = 1) {
     return new Date(date.getTime() + (days * this.METADATA.DAY))
   }
 
@@ -296,7 +296,7 @@ export default class DateTime extends NGN.EventEmitter {
    * The number of weeks to add to the date.
    * @return {Date}
    */
-  addWeek (date, weeks) {
+  addWeek (date, weeks = 1) {
     return new Date(date.getTime() + (weeks * this.METADATA.WEEK))
   }
 
@@ -307,7 +307,7 @@ export default class DateTime extends NGN.EventEmitter {
    * The number of months to add to the date.
    * @return {Date}
    */
-  addMonth (date, months) {
+  addMonth (date, months = 1) {
     const inputDate = new Date(date.getTime())
 
     if (months === 0) {
@@ -362,7 +362,7 @@ export default class DateTime extends NGN.EventEmitter {
    * The number of years to add to the date.
    * @return {Date}
    */
-  addYear (date, years) {
+  addYear (date, years = 1) {
     let newdate = new Date(date.getTime())
     newdate.setFullYear(newdate.getFullYear() + years)
 

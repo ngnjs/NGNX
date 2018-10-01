@@ -12,7 +12,8 @@
     "test:node": "rollup -c ./rollup.testnode.config.js && tap -R spec ./test/*-*/*-*.js && standard --verbose | snazzy",
     "test:node:date": "rollup -c ./rollup.testnode.config.js && tap -R spec ./test/*-date*/*-*.js && standard --verbose | snazzy",
     "test:node:date:duration": "rollup -c ./rollup.testnode.config.js && tap -R spec ./test/*-date*/*-duration.js && standard --verbose | snazzy",
-    "test:node:date:interval": "rollup -c ./rollup.testnode.config.js && tap -R spec ./test/*-date*/*-interval.js && standard --verbose | snazzy"
+    "test:node:date:interval": "rollup -c ./rollup.testnode.config.js && tap -R spec ./test/*-date*/*-interval.js && standard --verbose | snazzy",
+    "test:node:date:iterator": "rollup -c ./rollup.testnode.config.js && tap -R spec ./test/*-date*/*-iterator.js && standard --verbose | snazzy"
   },
   "author": "Author.io",
   "license": "BSD-3-Clause",
